@@ -1,7 +1,12 @@
 /* The variable where the target dicts will be stored in */
 ~targets = [].asDict;
 
+
 (// --- Configuration ---
+/*
+Put your cursor here and and press cmd or ctrl enter
+*/
+
 var targetIP = "127.0.0.1";
 var targetPort = 57130;
 // scListenPort = 57120  // default port SuperCollider listens on
@@ -10,16 +15,15 @@ var targetPort = 57130;
 var conn = NetAddr(targetIP, targetPort);
 
 var bangSend = "*"; // The char send when requesting a bang
-var logSends = false; // send logs on what's happening
-var logScreenWrap = 1, currentWrap = 0; // Wrap send msgs around a limit
+var logSends = false; // Send logs on what's happening
 var warnIncompleteString = true; // Print warning
 var warnPropUnavailable = true; // Print warning when a selected property is not available
 
 /* Helper functions */
-var ft  = {|str,size,fillChar=" "| str ++ (fillChar ! (size - str.size)).join}; // padd string on the right if the given size is bigger then the string
+var ft  = {|str,size,fillChar=" "| str ++ (fillChar ! (size - str.size)).join}; // fill till - padd string on the right if the given size is bigger then the string
 var rin = {|value,replace=""| value ?? {replace} }; // replace if nil
-var pic = {|v c t f| if(c.(v), {t.(v)}, f)}; // passing if check
-var pnnc = {|v t f| pic.(v, (_!=nil), t, f)}; // passing not nil check
+var pic = {|v c t f| if(c.(v), {t.(v)}, f)}; // (argument) passing if check
+var pnnc = {|v t f| pic.(v, (_!=nil), t, f)}; // (argument) passing not nil check
 var pia = {|v else=""| pnnc.(v, ("/"++_), {else})}; // path if available - add `/` before `v` if it's not nil
 var noe = {|v| v == nil or: {v.isEmpty}}; // Nil or empty
 var sltcs = {|sl endWithAnd=true|
@@ -39,54 +43,56 @@ var parseLine = ({|str lineNmbr=nil|
 		var split = {|str split isStart|
 			split.collect({|ch|
 				if (ch == \s) {-1} { if (ch == \e) {str.size} {
-					if (isStart == true) { str.detectLastIndex(_==ch) } {str.detectIndex(_==ch) }
-				}
+					if (isStart == true) { str.detectLastIndex(_==ch) } { str.detectIndex(_==ch) }
+				};
 			};} ).reject(_==nil)[0];
 		};
 
 		var start = split.(str, afterChars, true);
 		var end = split.(str, beforeChars, false);
 
-		if ((start==nil) || (end==nil)) {nil} {
-			str[start+1 .. end-1];
+		if ( ((start==nil) || (end==nil)) or: {(start max: -1) == (end min: str.size-1)} ) {nil} {
+			var cut = str[start+1 .. end-1].reject(_==$ );
+			if (cut.size > 0) {cut} {nil};
 		}
 	};
 
 	var ids    = cutStringInbetween.(str, afterChars: [\s],     beforeChars: [$#]);
 	var sounds = cutStringInbetween.(str, afterChars: [$#, \s], beforeChars: [$|, $-]);
-	var path   = cutStringInbetween.(str, afterChars: [$|],     beforeChars: [$-]);
+	var path   = cutStringInbetween.(str, afterChars: [$|],     beforeChars: [$-,$>]); // $> is here for sneaky people who want to leave out the `-` from the `->`
 	var props  = cutStringInbetween.(str, afterChars: [$>],     beforeChars: [\e]);
 
 	var sac = {|s| s.split($,).collect(_.reject(_==($ ))) }; // split and clean
 	#ids, sounds, path, props = [ids, sounds, path, props].collect({|v| if (v!=nil) {sac.(v)}});
 
+	if (props == nil) {("No props readable from `" ++ str ++ "`").error; nil;}
+	{
 	/* return a dict for each combination of ids and sounds */
-	[ids, sounds].collect(ani.(_)).allTuples.collect({|tup|
-		var id=tup[0], sound=tup[1];
-		var res = [
-			\id -> id,
-			\sound -> sound,
-			\path -> pnnc.(path, (_.at(0))),
-			\props -> props,
-			\origStr -> str,
-			\lineNmbr -> lineNmbr
-		].asDict;
-
-		if ( (warnIncompleteString == true) && noe.(res[\id]) && noe.(res[\sound]) ) {
-			("Couldn't read `" ++ res[\origStr] ++ "`").error;
-			nil;
-		} { res; };
-
-	}).reject(_==nil);
+		[ids, sounds].collect(ani.(_)).allTuples.collect({|tup|
+			var id=tup[0], sound=tup[1];
+			[
+				\id -> id,
+				\sound -> sound,
+				\path -> pnnc.(path, (_.at(0))),
+				\props -> props,
+				\origStr -> str,
+				\lineNmbr -> lineNmbr
+			].asDict;
+		}).reject(_==nil);
+	};
 });
 
+// When there's a custom path, use that, if there's a bang, send /id/sound, otherwise send /id/sound/prop
 var generatePath = {|t prop|
 	var pathEnd = pic.(prop, (_!="*"), ("/"++_), "");
 	pnnc.(t[\path], ({|p|"/" ++ p ++ pathEnd}), {
-		pia.(t[\id]) ++ pia.(t[\sound]) ++ pathEnd;
+		if ((t[\id] == nil) && (t[\sound] == nil) && prop=="*") { "/"++bangSend } {
+			pia.(t[\id]) ++ pia.(t[\sound])
+		} ++ pathEnd;
 	});
 };
 
+// Return list of strings to print for the nice list view
 var getPrintableList = {|targets sp|
 	targets.collect({|t|
 		t[\props].collect({|prop|
@@ -102,6 +108,7 @@ var getPrintableList = {|targets sp|
 	}).flatten(1);
 };
 
+// Get longest version of every item so the spacing of the print list is nice (I know this is not very necausery)
 var getSpacings = {|targets padding=2|
 	var sizes = [\id->"id".size, \sound->"sound".size, \path->"path".size, \prop->"prop".size].asDict;
 
@@ -117,10 +124,9 @@ var getSpacings = {|targets padding=2|
 	sizes.collect(_+padding);
 };
 
+// Print out the list of things that will be send
 var printWhatWillBeSend = {|targets|
-
 	// print spacings
-	var padding = 5;
 	var sp = getSpacings.(targets);
 
 	var pretext = "SENDING: ";
@@ -134,7 +140,6 @@ var printWhatWillBeSend = {|targets|
 };
 
 
-
 /* Send msg to target port */
 var sendMsgs = {|targets id sound valPairs|
 	targets.do({|target|
@@ -145,25 +150,28 @@ var sendMsgs = {|targets id sound valPairs|
 		// Does this target match the current message (either not specified (which matches all cases) or specified)
 		if (((target[\id] == nil) || (target[\id].asSymbol == id)) && ((target[\sound] == nil) || (target[\sound].asSymbol == sound)))
 		{
-
-			var realProps = props.reject(_=="*").collect(_.asSymbol);
 			var prntLog = {|str|
-				if ((currentWrap = currentWrap + str.size) > logScreenWrap) {currentWrap = 0; str.postln} {str.post};
+				("Sending: " ++ str).postln
 			};
 
-			// Fire off bang msgs for bangs
+			var realProps = props.reject(_=="*").collect(_.asSymbol);
+
+			// Fire off bang msgs
 			props.select(_=="*").do({|v|
 				var path = generatePath.(target,"*");
 				conn.sendMsg(path, bangSend);
-				if (logSends == true) {prntLog.(path ++ "->" ++ bangSend ++ " ")};
+				if (logSends == true) {prntLog.(path ++ "->" ++ bangSend)};
 			});
 
+			// Fire of msgs for matching properties
 			valPairs.select({|vp|realProps.includes(vp[0])}).do({|prop|
-				var path = generatePath.(target, prop[0]);
-				conn.sendMsg(path, prop[1]);
-				if (logSends == true) { prntLog.(path ++ "/" ++ prop[0] ++ "->" ++ prop[1] ++ " "); }
+				var name = prop[0], val = prop[1];
+				var path = generatePath.(target, name);
+				conn.sendMsg(path, val);
+				if (logSends == true) { prntLog.(path ++ "->" ++ val); }
 			});
 
+			// Warn about unavailable properties
 			if (warnPropUnavailable == true) {
 				var valNames = valPairs.collect(_[0]);
 				var unusedProps = realProps.reject({|p| valNames.any(_==p.asSymbol) }).collect(_.asString);
@@ -188,10 +196,10 @@ OSCdef(\newTargets, { |msg|
     // Targets value overwritten
 	~targets = lines
 	.collect({|l i| parseLine.(l.asString, i) }) // Let's interpret the lines
+	.reject(_==nil)
 	.flat; // It pregenerates all possible combinations so lets flatten all the results together
 
 	haveWarnedAbout = List[];
-	currentWrap = 0;
 
 	printWhatWillBeSend.(~targets);
 }, path: "/newTargets");
