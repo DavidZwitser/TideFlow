@@ -5,21 +5,21 @@
 ## Syntax
 `ids # sounds |path -> properties`
 
-#### Explanation
-`ids`: Filter messages on ids (`d1`, `d2`, `d3` or `p 1`, `p 2` or `p "id"`).\
-`sounds`: Filter messages on the sample or instrument used (`bd`, `808bd`, `supervibe`).\
-`path`: Use this to change the OSC path that's send. `/{property}` will be added after the path except for bangs. \
-`properties`: The names of the values from Tidal Cycles you want to send. When you write a `*` a `bang` will be send. By default that will just send a `"*"` char, but you can change it.
+#### Parts
+`ids`: Filter messages on ids produced by `d1`, `d2`, `d3` or `p 1`, `p 2` or `p "id"` etc.\
+`sounds`: Filter messages on the sample or instrument used like `bd`, `808bd`, `supervibe` etc.\
+`path`: Use this to change the OSC path that's send. `/{property}` will be added after the path except when sending bangs. \
+`properties`: The names of the values from Tidal Cycles you want to send. When you write a `*` a `bang` will be send to capture something just playing. By default that will just send a `"*"` char, but you can change it.
 
-
-`ids, sounds, properties` can have multiple entries separated by commas `hi, bye` (spaces are ignored)\
-`ids, sounds, rename` are optional and can be left out.
-- Leaving out `path` will construct a path with `/id/sound/property` where available.
-- Leaving out `ids` or `sounds` will match any id or sound. You can even math everything if you leave them both out! Having just `->*` will send a bang on every event happening!
-- When no `#` is written, the text before `|` or `->` will be interpreted as a sound. To only write an `id` follow it by a `#`. So this is an id `id# ->*` and this a sound `sound ->*`.
+#### Rules
+`ids, sounds, properties` can have multiple entries separated by commas `hi, bye` (spaces are ignored).\
+`ids, sounds, path` are optional and can be left out.
+- Leaving out `path` will construct a path with `/id/sound/property` based on those properties availabilities.
+- Leaving out `ids` or `sounds` will match any id or sound. You can even match everything if you leave them both out! Having just `->*` will send a bang on every event happening!
+- When no `#` is written, the text before `|` or `->` will be interpreted as a sound. To only write an `id` follow it by a `#`. So this filters ids `id# ->*`, this filters sounds `sound ->*` and this gives a path `|path ->*`.
 - You must have at least one `prop` with `->` before it (secretly just `>` but `->` looks more readable). That's the basis.
 
-So the full list possible combinations is: \
+#### Full list of possibilities
 `ids # sounds |path -> props`\
 `sounds |path -> props`\
 `ids # |path -> props`\
@@ -72,7 +72,7 @@ If your expression doesn't have at least the basis `>*` you'll get an error like
 Everything else will be interpreted following the pattern. Spaces in names will be removed.
 
 #### Options
-When you have specified what you want to send, but it's not available, the script will warn you about it once and give you the options that áre available like so:
+When you have specified what you want to send, but it's not available, the script will warn you about it once and give you the options that are available like so:
 ```
 WARNING: `banana` not available in sound 1/bd from 1,2 # bd -> *, orbit, banana
 WARNING: 1/bd has _id_, cps, cycle, delta, orbit and s available
