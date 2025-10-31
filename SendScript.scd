@@ -18,9 +18,5 @@ rm -> squiz
 
 ";
 
-msg = "
-hi->*
-";
-
 superColliderConn.sendMsg("/newTargets", *(msg.split($\n).reject(_=="")));
 );

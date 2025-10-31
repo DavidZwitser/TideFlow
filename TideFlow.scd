@@ -51,7 +51,7 @@ var parseLine = ({|str lineNmbr=nil|
 		var start = split.(str, afterChars, true);
 		var end = split.(str, beforeChars, false);
 
-		if ( ((start==nil) || (end==nil)) or: {(start max: 0) == (end min: str.size-1)} ) {nil} {
+		if ( ((start==nil) || (end==nil)) or: {(start max: -1) == (end min: str.size-1)} ) {nil} {
 			var cut = str[start+1 .. end-1].reject(_==$ );
 			if (cut.size > 0) {cut} {nil};
 		}
