@@ -1,5 +1,5 @@
 # TideFlow
-### A SuperCollider script that gives you a small expressive notation for specifying what messages from Tidal Cycles to send over OSC
+### A SuperCollider quark that gives you a small expressive notation for specifying what messages to send from Tidal Cycles over OSC
 
 
 ## Syntax
@@ -40,47 +40,73 @@ Some of these are very impractical but here for demonstrational purposes.
 
 
 ## Usage
-#### Configuring
-On the top of the `TideFlow.sc` script are all the settings. Here you can change what ip or port the messages are sent to. The default is `ip: 127.0.0.1` and `port: 57130`.
+
 #### Starting
-Open both the `TideFlow.sc` and `SendScript.sc` files in SuperCollider. Run `TideFlow.sc` once and then specify in the `msg` variable in `SendScript.sc` what you want to send. Run to send.
+Open the `TideGo.scd` file in supercollider and run line two (shift+enter). Underneath in parenthesies will be some example code. You can run this with ctr/cmd+enter.
+
+#### Configuring
+The `TideFlow.new` method can take a whole bunch of args. They're listed here:
+|name|default value|explenation|
+|----|-------------|-----------|
+|sendIP|NetAddr.localIP|The ip that TF will send messages to.|
+|sendPort|55660|The port that TF will send messages to.|
+|bangStr|"*"|The value send when requesting a bang.|
+|postSends|false|Post a message in the Post window on messages send.|
+|warnPropUnavailable|true|Send a warning (and alternative suggestion) when a prop is not available.|
+|listenOnOSCForExpr|true|Toggle if TF should listen for msgs coming in over OSC.|
+|listenPath|"/tideflow/new"|The OSC path TF will listen to for receiving messages over OSC.|
 
 #### Reading
 You'll get a nice message in the Post Window showing what your expression will result to sending like this:
 ```
-         id  sound  path         prop
-----------------------------------------
-SENDING: 1   bd     /beat        -> *
-SENDING: 1   bd     /beat/orbit  -> orbit
-SENDING: 1   hh     /beat        -> *
-SENDING: 1   hh     /beat/orbit  -> orbit
-SENDING: 2   bd     /beat        -> *
-SENDING: 2   bd     /beat/orbit  -> orbit
-SENDING: 2   hh     /beat        -> *
-SENDING: 2   hh     /beat/orbit  -> orbit
-SENDING: *   rm     /rm/squiz    -> squiz
-SENDING: *   *      /*           -> *
-SENDING: *   *      /orbit       -> orbit
-SENDING: 2   *      /ch2         -> *
-SENDING: *   rm     /rm/squiz    -> squiz
+Interpreting:
+0: 1,2 # 808bd,hh | beat -> *, room
+1: rm -> squiz
+2: |everything -> *,orbit
+3: 2# |ch2 -> n
+
+Got:
+-----------------------------------------------
+         id  sound  path               prop
+-----------------------------------------------
+SENDING: 1   808bd  /beat              -> *
+SENDING: 1   808bd  /beat/room         -> room
+SENDING: 1   hh     /beat              -> *
+SENDING: 1   hh     /beat/room         -> room
+SENDING: 2   808bd  /beat              -> *
+SENDING: 2   808bd  /beat/room         -> room
+SENDING: 2   hh     /beat              -> *
+SENDING: 2   hh     /beat/room         -> room
+SENDING: *   rm     /rm/squiz          -> squiz
+SENDING: *   *      /everything        -> *
+SENDING: *   *      /everything/orbit  -> orbit
+SENDING: 2   *      /ch2/n             -> n
 ```
 
 
 #### Error
 If your expression doesn't have at least the basis `>*` you'll get an error like this:\
-```ERROR: No props readable from `2# |ch2 -> ` ```\
+```
+Interpreting:
+0: 1,2 # 808bd,hh | beat -> *, room
+1: rm squiz
+ERROR: No props readable from `rm squiz`
+2: |everything -> *,orbit
+3: 2# |ch2 ->
+ERROR: No props readable from `2# |ch2 -> `
+```
 Everything else will be interpreted following the pattern. Spaces in names will be removed.
 
 #### Options
 When you have specified what you want to send, but it's not available, the script will warn you about it once and give you the options that are available like so:
 ```
-WARNING: `banana` not available in sound 1/bd from 1,2 # bd -> *, orbit, banana
+WARNING: `banana` not available in sound 1/bd from 1,2 # 808bd -> *, room, banana
 WARNING: 1/bd has _id_, cps, cycle, delta, orbit and s available
 ```
 
 
 #### Sending
-You can also send these lines to SuperCollider's default port `57120` from another program. To do this use the OSC path `/newTargets` and send each line as an individual argument to the OSC message. Maybe you can even send them from Tidal Cycles?? Would be awesome.
+You can also send these lines to SuperCollider's default port `57120` from another program. To do this use the OSC path `/tideflow/new` and send the whole string as one argument to the OSC message (it'll be split on `\n`). Maybe you can even send them from Tidal Cycles?? Would be awesome.
 
 
 ## Why

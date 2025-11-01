@@ -1,0 +1,9 @@
+(
+  name: "TideFlow",
+  author: "David Zwitser",
+  summary: "A SuperCollider quark that gives you a small expressive notation for specifying what messages to send from Tidal Cycles over OSC",
+  version: "1.0.0",
+  schelp: "README.md",
+  license: "MIT",
+  url: "https://github.com/DavidZwitser/TideFlow",
+)
